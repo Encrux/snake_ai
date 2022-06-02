@@ -7,6 +7,7 @@ import sys
 from gym import error, spaces, utils, core
 import gym
 import game
+import math
 
 window_size = width, height = 1000, 1000
 grid_size = 20
@@ -18,12 +19,9 @@ colors = {
     "red":   (255,0,0)
 }
 
-directions = {
-    "up":       [0, -1],
-    "right":    [1, 0],
-    "down":     [0, 1],
-    "left":     [-1, 0]
-}
+dirs = [
+    [0,-1], [1,0], [0,1], [-1,0]
+]
 
 default_snake = [
             (25, 25),
@@ -36,26 +34,29 @@ default_snake = [
 def game_to_screen(x: int, y: int):
     return x * grid_size, y * grid_size
 
+def distance_reward(snake, apple):
+    head = snake[0]
+    distance = math.dist(head, apple)
+    return ((1 / distance) - 0.5) * 10
+
 class snake_game(gym.Env):
     metadata = {'render.modes': ['human']}
 
     snake = []
+    frame = []
 
-    def __init__(self, board_dim = (50, 50), simspeed = 100, initial_length = 4, initial_dir=[1,0]) -> None:
+    def __init__(self, board_dim = (50, 50), simspeed = 500, initial_length = 4, initial_dir=[1,0]) -> None:
         self.dt = simspeed
-
+        self.episode = 0
+        self.cumulative_reward = 0
+        self.steps = 0
         self.width, self.height = int(board_dim[0]), int(board_dim[1])
-        self.board_dim = width, height 
+        self.board_dim = board_dim 
 
         self.highscore = 0
 
         self.action_space = spaces.Discrete(4)
-        low = np.zeros(3)
-        high = np.zeros(3)
-        high.fill(255)
-
-        self.observaion_space = spaces.Box(low=0, high=255, shape=(width, height, 3), dtype=np.uint8)
-        self.reset()
+        self.observation_space = spaces.Box(low=0, high=2, shape=(board_dim))
 
         #init game window
         pygame.init()
@@ -63,21 +64,22 @@ class snake_game(gym.Env):
         self.window = pygame.display.set_mode(window_size)
         self.window.fill(colors["black"])
         pygame.display.flip()
-
-            
-        
     
+        self.reset()
+
+
     def reset(self):
         if (len(self.snake) > self.highscore):
             self.highscore = len(self.snake)
 
         print("score: " + str(len(self.snake)))
         self.score = 0
-        self.head_dir = directions["right"]
+        self.head_dir = 1 #right
         self.snake = default_snake
         self.game_over = False
         self.spawn_apple()
-
+        self.update_frame()
+        return self.frame
 
     def spawn_apple(self):
         spaces = list(np.ndindex(*self.board_dim))
@@ -106,33 +108,34 @@ class snake_game(gym.Env):
         x_max, y_max = self.board_dim
         x, y = head
 
-        if x < 0 or x > x_max:
+        if x < 0 or x >= x_max:
             return False
-        if y < 0 or y > y_max:
+        if y < 0 or y >=     y_max:
             return False
         
         return True
 
     def valid_direction(self, action):
-        if self.head_dir == directions["up"] and action == directions["down"]:
+        if self.head_dir == 0 and action == 2:
             return False
-        if self.head_dir == directions["right"] and action == directions["left"]:
+        if self.head_dir == 1 and action == 3:
             return False
-        if self.head_dir == directions["down"] and action == directions["up"]:
+        if self.head_dir == 2 and action == 0:
             return False
-        if self.head_dir == directions["left"] and action == directions["right"]:
+        if self.head_dir == 3 and action == 1:
             return False
         
         return True
 
     def step(self, action):
         reward = 0
-         
+        self.steps += 1
+
         if self.valid_direction(action):
-           self.dir = action 
+           self.head_dir = action 
 
         #update snake head
-        head = tuple(np.add(self.snake[0], self.head_dir))
+        head = tuple(np.add(self.snake[0], dirs[self.head_dir]))
         self.snake = [head] + self.snake
 
         if not (np.array_equal(head, self.apple)):
@@ -140,20 +143,33 @@ class snake_game(gym.Env):
             reward = -1
         else:
             self.spawn_apple()
-            reward = 25
+            reward = 100
 
         if not self.is_valid():
             self.game_over = True
             reward = -100
             self.reset()
+        else:
+            self.update_frame()
 
-        return {
-            "snake": self.snake,
-            "game_over": self.game_over,
-            "apple": self.apple,
-            "reward": reward
-        }
-    
+        dr = distance_reward(self.snake, self.apple)
+        reward += dr
+        #print(reward, dr)
+        self.cumulative_reward += dr
+
+        return self.frame, reward, self.game_over, {'episode': {'episode': self.episode, 'r': self.cumulative_reward, 'l':self.steps}}
+
+    def update_frame(self):
+        next = np.zeros(shape=(self.width, self.height))
+        next[self.apple] = 2
+        
+        for block in self.snake:
+            next[block] = 1
+        
+        pygame.time.delay(self.dt)
+        self.frame = next
+        self.render()
+
     def render(self):
         self.window.fill(colors["black"])
 
@@ -166,5 +182,4 @@ class snake_game(gym.Env):
         #render apple
         ax, ay = game_to_screen(*self.apple)
         pygame.draw.rect(self.window, colors["red"], pygame.Rect(ax, ay, grid_size, grid_size))
-        
         pygame.display.flip()

@@ -1,28 +1,25 @@
-
-import os.path as osp
-import os
 import gym
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-import stable_baselines3
-import snake
+
 from stable_baselines3 import PPO
-from stable_baselines3.ppo import ppo
 from stable_baselines3.common.env_util import make_vec_env
+from snake import snake_game
 
-#Goes much faster without gpu for some reason...
-#os.environ["CUDA_VISIBLE_DEVICES"]="-1"
+def fromDefaultParameters():
+    return snake_game(board_dim=(50,50), simspeed=5, initial_length=4, initial_dir=[1,0])
 
-snake_env = make_vec_env(snake.snake_game, n_envs=1)
+# Parallel environments
+snake_env = make_vec_env(fromDefaultParameters, n_envs=1)
 
 model = PPO("MlpPolicy", snake_env, verbose=1)
-model.learn(total_timesteps=1000)
-model.save("snek")
+model.learn(total_timesteps=2500000)
+model.save("ppo_cartpole")
+
+del model # remove to demonstrate saving and loading
+
+model = PPO.load("ppo_cartpole")
 
 obs = snake_env.reset()
-
 while True:
     action, _states = model.predict(obs)
-    obs, rewards, done, info = snake_env.step(action)
-    snake_env.render
+    obs, rewards, dones, info = snake_env.step(action)
+    snake_env.render()
