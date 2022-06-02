@@ -4,8 +4,9 @@ import random
 from enum import Enum
 import numpy as np
 import sys
-from gym import error, spaces, utils
+from gym import error, spaces, utils, core
 import gym
+import game
 
 window_size = width, height = 1000, 1000
 grid_size = 20
@@ -31,23 +32,44 @@ default_snake = [
             (22, 25)
         ]
 
+
+def game_to_screen(x: int, y: int):
+    return x * grid_size, y * grid_size
+
 class snake_game(gym.Env):
+    metadata = {'render.modes': ['human']}
+
+    snake = []
 
     def __init__(self, board_dim = (50, 50), simspeed = 100, initial_length = 4, initial_dir=[1,0]) -> None:
         self.dt = simspeed
 
-        width, height = int(board_dim[0]), int(board_dim[1])
+        self.width, self.height = int(board_dim[0]), int(board_dim[1])
         self.board_dim = width, height 
 
         self.highscore = 0
 
+        self.action_space = spaces.Discrete(4)
+        low = np.zeros(3)
+        high = np.zeros(3)
+        high.fill(255)
 
+        self.observaion_space = spaces.Box(low=0, high=255, shape=(width, height, 3), dtype=np.uint8)
         self.reset()
+
+        #init game window
+        pygame.init()
+        pygame.display.set_caption("snake:ai")
+        self.window = pygame.display.set_mode(window_size)
+        self.window.fill(colors["black"])
+        pygame.display.flip()
+
+            
+        
     
     def reset(self):
-        if self.snake is not None:
-            if (len(self.snake) > self.highscore):
-                self.highscore = len(self.snake)
+        if (len(self.snake) > self.highscore):
+            self.highscore = len(self.snake)
 
         print("score: " + str(len(self.snake)))
         self.score = 0
@@ -105,7 +127,7 @@ class snake_game(gym.Env):
 
     def step(self, action):
         reward = 0
-
+         
         if self.valid_direction(action):
            self.dir = action 
 
@@ -131,3 +153,18 @@ class snake_game(gym.Env):
             "apple": self.apple,
             "reward": reward
         }
+    
+    def render(self):
+        self.window.fill(colors["black"])
+
+        #render snake
+        for block in self.snake:
+            x, y = game_to_screen(*block)
+            rect = pygame.Rect(x, y, grid_size, grid_size)
+            pygame.draw.rect(self.window, colors["blue"], rect)
+
+        #render apple
+        ax, ay = game_to_screen(*self.apple)
+        pygame.draw.rect(self.window, colors["red"], pygame.Rect(ax, ay, grid_size, grid_size))
+        
+        pygame.display.flip()

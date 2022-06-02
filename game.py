@@ -6,6 +6,7 @@ import numpy as np
 import sys
 import snake
 from snake import directions, colors, window_size, grid_size, snake_game, width, height
+from gym import spaces
 
 def init_pygame():
     #init game window
@@ -54,15 +55,16 @@ if __name__=="__main__":
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_UP:
-                    action = directions["up"]
+                    action = 0
                 if event.key == pygame.K_RIGHT:
-                    action = directions["right"]
+                    action = 1
                 if event.key == pygame.K_DOWN:
-                    action = directions["down"]
+                    action = 2
                 if event.key == pygame.K_LEFT:
-                    action = directions["left"]
+                    action = 3
 
-        current_state = game.step(action)
+
+        #current_state = game.step(action)
         update_frame(window, game)
         pygame.time.wait(game.dt)
     
