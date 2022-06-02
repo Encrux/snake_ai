@@ -71,8 +71,9 @@ class snake_game(gym.Env):
     def reset(self):
         if (len(self.snake) > self.highscore):
             self.highscore = len(self.snake)
+            print("new highscore: ", self.highscore)
 
-        print("score: " + str(len(self.snake)))
+        #print("score: " + str(len(self.snake)))
         self.score = 0
         self.head_dir = 1 #right
         self.snake = default_snake
@@ -168,7 +169,7 @@ class snake_game(gym.Env):
         
         pygame.time.delay(self.dt)
         self.frame = next
-        self.render()
+        #self.render()
 
     def render(self):
         self.window.fill(colors["black"])

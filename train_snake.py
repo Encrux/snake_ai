@@ -8,7 +8,7 @@ def fromDefaultParameters():
     return snake_game(board_dim=(50,50), simspeed=5, initial_length=4, initial_dir=[1,0])
 
 # Parallel environments
-snake_env = make_vec_env(fromDefaultParameters, n_envs=1)
+snake_env = make_vec_env(fromDefaultParameters, n_envs=4)
 
 model = PPO("MlpPolicy", snake_env, verbose=1)
 model.learn(total_timesteps=2500000)
