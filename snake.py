@@ -42,6 +42,7 @@ class SnakeEnv(gym.Env):
 
     snake = []
     frame = []
+    current_dist = []  # to apple
 
     def __init__(self, board_dim=(50, 50), simspeed=500, initial_length=4, initial_dir=[1, 0]) -> None:
         self.dt = simspeed
@@ -54,7 +55,7 @@ class SnakeEnv(gym.Env):
         self.highscore = 0
 
         self.action_space = spaces.Discrete(4)
-        self.observation_space = spaces.Box(low=0, high=2, shape=(board_dim))
+        self.observation_space = spaces.Box(low=0, high=1, shape=(12,))
 
         # init game window
         pygame.init()
@@ -76,8 +77,9 @@ class SnakeEnv(gym.Env):
         self.snake = default_snake
         self.game_over = False
         self.spawn_apple()
+        self.current_dist = math.dist(self.apple, self.snake[0])
         self.update_frame()
-        return self.frame
+        return self.get_state()
 
     def spawn_apple(self):
         spaces = list(np.ndindex(*self.board_dim))
@@ -138,7 +140,6 @@ class SnakeEnv(gym.Env):
 
         if not (np.array_equal(head, self.apple)):
             self.snake.pop(-1)
-            reward = -1
         else:
             self.spawn_apple()
             reward = 100
@@ -154,8 +155,11 @@ class SnakeEnv(gym.Env):
         reward += dr
         # print(reward, dr)
         self.cumulative_reward += dr
+        self.current_dist = math.dist(self.apple, self.snake[0])
+        # TODO: change reward to punish going further away and reward going closer
+        # the current reward essentially does the same, but maybe it's better this way
 
-        return self.frame, reward, self.game_over, {
+        return self.get_state(), reward, self.game_over, {
             'episode': {'episode': self.episode, 'r': self.cumulative_reward, 'l': self.steps}}
 
     def update_frame(self):
@@ -182,3 +186,37 @@ class SnakeEnv(gym.Env):
         ax, ay = game_to_screen(*self.apple)
         pygame.draw.rect(self.window, colors["red"], pygame.Rect(ax, ay, grid_size, grid_size))
         pygame.display.flip()
+        pygame.time.delay(self.dt)
+
+    def near_obstacle_state(self):
+        vec = [0, 0, 0, 0]
+        hx, hy = self.snake[0]
+        vec[0] = 1 if hy == 1 or [hx, hy - 1] in self.snake else 0  # 1 if danger above
+        vec[1] = 1 if hx == self.width - 2 or [hx + 1, hy] in self.snake else 0  # 1 if danger is to right
+        vec[2] = 1 if hy == self.height - 2 or [hx, hy + 1] in self.snake else 0  # 1 if danger is below
+        vec[3] = 1 if hx == 1 or [hx - 1, hy] in self.snake else 0  # 1 if danger is to left
+
+        return vec
+
+    def dir_one_hot(self):
+        vec = [0, 0, 0, 0]
+        for i in range(0, 3):
+            vec[0] = 1 if self.head_dir == i else 0
+        return vec
+
+    def apple_dir(self):
+        vec = [0, 0, 0, 0]
+        x, y = np.subtract(self.apple, self.snake[0])
+        dominant_direction = "horizontal" if abs(x) >= abs(y) else "vertical"
+        vec[0] = 1 if y > 0 and dominant_direction == "vertical" else 0
+        vec[1] = 1 if x > 0 and dominant_direction == "horizontal" else 0
+        vec[2] = 1 if y <= 0 and dominant_direction == "vertical" else 0
+        vec[3] = 1 if x <= 0 and dominant_direction == "horizontal" else 0
+        return vec
+
+    def get_state(self):
+        state = []
+        state.extend(self.apple_dir())
+        state.extend(self.near_obstacle_state())
+        state.extend(self.dir_one_hot())
+        return state
