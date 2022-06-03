@@ -21,3 +21,9 @@ the loss function:
 - eating an apple: +100
 - dying: -100
 - for every step: ((1 / distance(apple, head)) - 0.5) * 10
+
+TODO:
+- play around with observation space
+  - (context: In the beginning, the observation space was just the entire frame. The snake didn't seem to be improving a lot, so maybe there are even better observation spaces)
+- play around with loss function
+  - e.g. change the distance reward to "punish for going further away, reward for getting closer" instead of this distance formula
