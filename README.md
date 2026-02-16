@@ -1,3 +1,6 @@
+# Project goal
+Learn about stable baselines, gym environments and PPO in preperation for my bachelor's thesis "Automating endoscope movement for minimally invasive abdominal surgery using deep reinforcement learning"
+
 # snake_ai
 
 clip of a pretrained model playing snake (2.5M timesteps, 12 parallel Envs trained)
